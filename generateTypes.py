@@ -8,15 +8,29 @@ class U:
     nBits: int
     nDecimals: int
 
-    def label(self) -> str:
+    def typeName(self) -> str:
         return f"U{self.nBits}x{self.nDecimals}"
 
     def storageType(self) -> str:
         return f"uint{self.nBits}"
 
 
+def generateModFile(xs: U) -> str:
+    imports = map(
+        lambda x: f'import {{{x.typeName()}}} from "./{x.typeName()}.sol";', xs)
+    joinedImports = "\n".join(imports)
+    return f"""
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.13;
+
+// re-export submodules
+{joinedImports}
+
+"""
+
+
 def generateFile(a: U, bs: U):
-    header = generateFileHeader(a)
+    header = generateFileHeader(a, bs)
     (mathSection, mathFnNames) = generateMathSection(a, bs)
     (conversionSection, conversionFnNames) = generateConversionSections(a, bs)
     (utilitySection, utilityFnNames) = generateUtilitySection(a)
@@ -31,15 +45,20 @@ def generateFile(a: U, bs: U):
     return "\n".join(sections)
 
 
-def generateFileHeader(u: U):
+def generateFileHeader(u: U, bs: list[U]):
+    imports = map(
+        lambda b: f'import {{{b.typeName()}}} from "./{b.typeName()}.sol";', bs)
+
+    joinedImports = "\n".join(imports)
+
     return f"""
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 import {{convertBase}} from "src/utils.sol";
 
-import "./mod.sol";
+{joinedImports}
 
-type {u.label()} is {u.storageType()};
+type {u.typeName()} is {u.storageType()};
 uint8 constant DECIMALS = {u.nDecimals};
 uint256 constant SCALAR = 10 ** DECIMALS;
   """
@@ -61,27 +80,26 @@ def generateMathSection(a: U, bs: list[U]) -> tuple[str, list[str]]:
   """, functionNames
 
 
-def generateMathOpSection(op: str, a: U, b: list[U]) -> list[str, list[str]]:
-    functions = list(
-        map(lambda dstType: generateMathFunction(op, a, dstType), b))
-    functionNames = list(map(lambda x: x[1], functions))
-    functionTexts = list(map(lambda x: x[0], functions))
-    joinFunctionText = "\n".join(functionTexts)
+def generateMathOpSection(op: str, a: U, bs: list[U]) -> list[str, list[str]]:
+    fns = list(
+        map(lambda b: generateMathFunction(op, a, b), bs))
+    names = list(map(lambda x: x[1], fns))
+    texts = list(map(lambda x: x[0], fns))
+    joinedTexts = "\n".join(texts)
     return f"""
 // {op}
 // --------------------------------------------------------------------------------
 
-{joinFunctionText}
-
-  """, functionNames
+{joinedTexts}
+  """, names
 
 
 def generateMathFunction(op: str, a: U, b: U) -> tuple[str, str]:
-    functionName = f"{op}{b.label()}"
+    functionName = f"{op}{b.typeName()}"
     return f"""
-function {functionName}({a.label()} a, {b.label()} b) pure returns ({a.label()}) {{
-  {a.label()} _b = b.to{a.label()}();
-  return a.{op}{a.label()}(_b);
+function {functionName}({a.typeName()} a, {b.typeName()} b) pure returns ({a.typeName()}) {{
+  {a.typeName()} _b = b.to{a.typeName()}();
+  return a.{op}{a.typeName()}(_b);
 }}
   """, functionName
 
@@ -92,7 +110,7 @@ def generateUtilitySection(u: U) -> tuple[str, list[str]]:
 // Utility functions
 // ================================================================================
 
-function unwrap({u.label()} a) pure returns ({u.storageType()}) {{
+function unwrap({u.typeName()} a) pure returns ({u.storageType()}) {{
     return _unwrap(a);
 }}
   """, ["unwrap"]
@@ -100,16 +118,16 @@ function unwrap({u.label()} a) pure returns ({u.storageType()}) {{
 
 def generateInternalFunctions(u: U) -> str:
     return f"""
-function _unwrap({u.label()} a, {u.label()} b) pure returns ({u.storageType()}, {u.storageType()}) {{
-    return ({u.label()}.unwrap(a), {u.label()}.unwrap(b));
+function _unwrap({u.typeName()} a, {u.typeName()} b) pure returns ({u.storageType()}, {u.storageType()}) {{
+    return ({u.typeName()}.unwrap(a), {u.typeName()}.unwrap(b));
 }}
 
-function _unwrap({u.label()} a) pure returns ({u.storageType()}) {{
-    return {u.label()}.unwrap(a);
+function _unwrap({u.typeName()} a) pure returns ({u.storageType()}) {{
+    return {u.typeName()}.unwrap(a);
 }}
 
-function _wrap({u.storageType()} a) pure returns ({u.label()}) {{
-    return {u.label()}.wrap(a);
+function _wrap({u.storageType()} a) pure returns ({u.typeName()}) {{
+    return {u.typeName()}.wrap(a);
 }}
   """
 
@@ -129,11 +147,11 @@ def generateConversionSections(a: U, bs: list[U]) -> tuple[str, list[str]]:
 
 
 def generateConversionFunction(a: U, b: U) -> tuple[str, str]:
-    fnName = f"to{b.label()}"
+    fnName = f"to{b.typeName()}"
     return f"""
-function {fnName}({a.label()} a) pure returns ({b.label()}) {{
+function {fnName}({a.typeName()} a) pure returns ({b.typeName()}) {{
     {b.storageType()} converted = convertBase(a.unwrap(), {a.nDecimals}, {b.nDecimals}).safeCastTo{b.nBits}();
-    return {b.label()}.wrap(converted);
+    return {b.typeName()}.wrap(converted);
 }}
   """, fnName
 
@@ -143,7 +161,7 @@ def generateFileFooter(u: U, exportFunctions: list[str]) -> str:
     return f"""
 using {{
   {f}
-}} for {u.label()} global;
+}} for {u.typeName()} global;
   """
 
 
@@ -159,12 +177,13 @@ types = list(map(lambda x: U(x[0], x[1]), bitsDecimalsCombinations))
 aToBs = {}
 aToBs[types[0]] = types[1:]
 for i in range(1, len(types) - 1):
-    print(i)
-    aToBs[types[i]] = types[i-1:] + types[:i+1]
-aToBs[types[-1]] = types[:-1]
+    aToBs[types[i]] = types[:i] + types[i+1:]
+aToBs[types[-1]] = types[::-1]
 
 for a, bs in aToBs.items():
-    print(a)
-    print(bs)
-    # with open(f"./src/{a.label()}.sol", "w") as f:
-    #     f.write(generateFile(a, bs))
+    with open(f"./src/{a.typeName()}.sol", "w") as f:
+        f.write(generateFile(a, bs))
+
+
+with open(f"./src/mod.sol", "w") as f:
+    f.write(generateModFile(types))
