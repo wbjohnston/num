@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 import {convertBase} from "src/utils.sol";
+import {SafeCastLib} from "src/library/SafeCastLib.sol";
+using SafeCastLib for uint256;
 
 import {U8x0} from "./U8x0.sol";
 import {U16x0} from "./U16x0.sol";
@@ -102,6 +104,10 @@ uint256 constant SCALAR = 10 ** DECIMALS;
 
 // add
 // --------------------------------------------------------------------------------
+
+function addU32x6(U32x6 a, U32x6 b) pure returns (U32x6) {
+    // TODO:
+}
 
 
 function addU8x0(U32x6 a, U8x0 b) pure returns (U32x6) {
@@ -624,6 +630,10 @@ function addU256x18(U32x6 a, U256x18 b) pure returns (U32x6) {
 // sub
 // --------------------------------------------------------------------------------
 
+function subU32x6(U32x6 a, U32x6 b) pure returns (U32x6) {
+    // TODO:
+}
+
 
 function subU8x0(U32x6 a, U8x0 b) pure returns (U32x6) {
   U32x6 _b = b.toU32x6();
@@ -1144,6 +1154,10 @@ function subU256x18(U32x6 a, U256x18 b) pure returns (U32x6) {
 
 // mul
 // --------------------------------------------------------------------------------
+
+function mulU32x6(U32x6 a, U32x6 b) pure returns (U32x6) {
+    // TODO:
+}
 
 
 function mulU8x0(U32x6 a, U8x0 b) pure returns (U32x6) {
@@ -1666,6 +1680,10 @@ function mulU256x18(U32x6 a, U256x18 b) pure returns (U32x6) {
 // div
 // --------------------------------------------------------------------------------
 
+function divU32x6(U32x6 a, U32x6 b) pure returns (U32x6) {
+    // TODO:
+}
+
 
 function divU8x0(U32x6 a, U8x0 b) pure returns (U32x6) {
   U32x6 _b = b.toU32x6();
@@ -2186,6 +2204,10 @@ function divU256x18(U32x6 a, U256x18 b) pure returns (U32x6) {
 
 // mod
 // --------------------------------------------------------------------------------
+
+function modU32x6(U32x6 a, U32x6 b) pure returns (U32x6) {
+    // TODO:
+}
 
 
 function modU8x0(U32x6 a, U8x0 b) pure returns (U32x6) {
@@ -3210,19 +3232,19 @@ function toU248x18(U32x6 a) pure returns (U248x18) {
   
 
 function toU256x0(U32x6 a) pure returns (U256x0) {
-    uint256 converted = convertBase(a.unwrap(), 6, 0).safeCastTo256();
+    uint256 converted = convertBase(a.unwrap(), 6, 0);
     return U256x0.wrap(converted);
 }
   
 
 function toU256x6(U32x6 a) pure returns (U256x6) {
-    uint256 converted = convertBase(a.unwrap(), 6, 6).safeCastTo256();
+    uint256 converted = convertBase(a.unwrap(), 6, 6);
     return U256x6.wrap(converted);
 }
   
 
 function toU256x18(U32x6 a) pure returns (U256x18) {
-    uint256 converted = convertBase(a.unwrap(), 6, 18).safeCastTo256();
+    uint256 converted = convertBase(a.unwrap(), 6, 18);
     return U256x18.wrap(converted);
 }
   
@@ -3337,6 +3359,7 @@ using {
   addU256x0,
   addU256x6,
   addU256x18,
+  addU32x6,
   subU8x0,
   subU16x0,
   subU24x0,
@@ -3423,6 +3446,7 @@ using {
   subU256x0,
   subU256x6,
   subU256x18,
+  subU32x6,
   mulU8x0,
   mulU16x0,
   mulU24x0,
@@ -3509,6 +3533,7 @@ using {
   mulU256x0,
   mulU256x6,
   mulU256x18,
+  mulU32x6,
   divU8x0,
   divU16x0,
   divU24x0,
@@ -3595,6 +3620,7 @@ using {
   divU256x0,
   divU256x6,
   divU256x18,
+  divU32x6,
   modU8x0,
   modU16x0,
   modU24x0,
@@ -3681,6 +3707,7 @@ using {
   modU256x0,
   modU256x6,
   modU256x18,
+  modU32x6,
   toU8x0,
   toU16x0,
   toU24x0,

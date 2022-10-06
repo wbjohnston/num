@@ -55,6 +55,8 @@ def generateFileHeader(u: U, bs: list[U]):
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 import {{convertBase}} from "src/utils.sol";
+import {{SafeCastLib}} from "src/library/SafeCastLib.sol";
+using SafeCastLib for uint256;
 
 {joinedImports}
 
@@ -84,11 +86,16 @@ def generateMathOpSection(op: str, a: U, bs: list[U]) -> list[str, list[str]]:
     fns = list(
         map(lambda b: generateMathFunction(op, a, b), bs))
     names = list(map(lambda x: x[1], fns))
+    names.append(f"{op}{a.typeName()}")
     texts = list(map(lambda x: x[0], fns))
     joinedTexts = "\n".join(texts)
     return f"""
 // {op}
 // --------------------------------------------------------------------------------
+
+function {op}{a.typeName()}({a.typeName()} a, {a.typeName()} b) pure returns ({a.typeName()}) {{
+    // TODO:
+}}
 
 {joinedTexts}
   """, names
@@ -148,9 +155,10 @@ def generateConversionSections(a: U, bs: list[U]) -> tuple[str, list[str]]:
 
 def generateConversionFunction(a: U, b: U) -> tuple[str, str]:
     fnName = f"to{b.typeName()}"
+    castStmt = "" if b.nBits == 256 else f".safeCastTo{b.nBits}()"
     return f"""
 function {fnName}({a.typeName()} a) pure returns ({b.typeName()}) {{
-    {b.storageType()} converted = convertBase(a.unwrap(), {a.nDecimals}, {b.nDecimals}).safeCastTo{b.nBits}();
+    {b.storageType()} converted = convertBase(a.unwrap(), {a.nDecimals}, {b.nDecimals}){castStmt};
     return {b.typeName()}.wrap(converted);
 }}
   """, fnName
@@ -178,7 +186,7 @@ aToBs = {}
 aToBs[types[0]] = types[1:]
 for i in range(1, len(types) - 1):
     aToBs[types[i]] = types[:i] + types[i+1:]
-aToBs[types[-1]] = types[::-1]
+aToBs[types[-1]] = types[:-1]
 
 for a, bs in aToBs.items():
     with open(f"./src/{a.typeName()}.sol", "w") as f:
